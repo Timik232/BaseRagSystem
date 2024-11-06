@@ -3,13 +3,31 @@ import json
 import requests
 import torch
 from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import BaseRetriever
 from langchain.llms.base import LLM
-from langchain_community.vectorstores import Qdrant
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_qdrant import QdrantVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import Field
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import PointStruct
+from qdrant_client.http.models import PointStruct, VectorParams
 from transformers import AutoModel, AutoTokenizer
+
+
+class QdrantRetriever(BaseRetriever):
+    """
+    Custom retriever class for QdrantVectorStore.
+    """
+
+    vector_store: QdrantVectorStore = Field(..., description="store for vectors")
+
+    def _get_relevant_documents(self, query_text: str, k: int = 4):
+        # query_embedding = self.vector_store.embeddings.embed_query(query_text)
+        results = self.vector_store.similarity_search(query_text, k=k)
+        return results
+
+    def retrieve(self, query_text: str, k: int = 4):
+        return self._get_relevant_documents(query_text, k)
 
 
 class CustomAPILLM(LLM):
@@ -38,7 +56,7 @@ class CustomAPILLM(LLM):
         except KeyError:
             raise ValueError("Invalid response format")
 
-    def _call(self, prompt: str) -> str:
+    def _call(self, prompt: str, *args, **qwargs) -> str:
         """
         Calls the LLM API and returns the response.
 
@@ -89,6 +107,7 @@ class RAG:
         text: str,
         collection_name: str,
         llm: CustomAPILLM,
+        embedding_model_name: str,
     ):
         """
         Init Vector DB
@@ -103,10 +122,12 @@ class RAG:
         qdrant_client = QdrantClient(host="localhost", port=6333)
         if not qdrant_client.collection_exists(collection_name):
             self.qdrant_create(text, qdrant_client, collection_name)
-        self.vector_store = Qdrant(
-            client=qdrant_client, collection_name=collection_name
+        embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
+        self.vector_store = QdrantVectorStore(
+            client=qdrant_client, collection_name=collection_name, embedding=embeddings
         )
         self.llm = llm
+        self.qdrant_retriever = QdrantRetriever(vector_store=self.vector_store)
         self.rag_chain = self.create_retriever()
 
     def encode_text(self, text: str) -> torch.Tensor:
@@ -138,10 +159,9 @@ class RAG:
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         chunks = splitter.split_text(text)
         embeddings = [self.encode_text(chunk) for chunk in chunks]
+        vectors_config = VectorParams(size=embeddings[0].shape[0], distance="Cosine")
         qdrant_client.create_collection(
-            collection_name=collection_name,
-            vector_size=embeddings[0].shape[0],
-            distance="Cosine",
+            collection_name=collection_name, vectors_config=vectors_config
         )
         points = [
             PointStruct(id=i, vector=embedding.tolist(), payload={"text": chunk})
@@ -157,7 +177,7 @@ class RAG:
         return RetrievalQA.from_chain_type(
             llm=self.llm,
             chain_type="stuff",
-            retriever=self.vector_store,
+            retriever=self.qdrant_retriever,
             return_source_documents=False,
         )
 
@@ -167,5 +187,5 @@ class RAG:
         :param query: question
         :return: answer
         """
-        response = self.rag_chain.run(query)
+        response = self.rag_chain.invoke(query)
         return response
