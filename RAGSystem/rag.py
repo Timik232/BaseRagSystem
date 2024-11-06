@@ -71,14 +71,16 @@ class CustomAPILLM(LLM):
         """
 
         data = {
-            "model": self.LLMModel,
+            "model": self.model_name,
             "messages": [{"role": "user", "content": prompt}],
         }
         json_data = json.dumps(data)
         headers = {
             "Content-Type": "application/json",
         }
-        response = requests.post(self.url, headers=headers, data=json_data)
+        session = requests.Session()
+        response = session.post(self.api_url, headers=headers, data=json_data)
+        session.close()
         if response.status_code == 200:
             response_data = response.json()
             return self.get_text_from_response(response_data)
@@ -87,6 +89,7 @@ class CustomAPILLM(LLM):
                 f"API request failed with status code {response.status_code}"
             )
 
+    @property
     def _identifying_params(self):
         return {"api_url": self.api_url, "model_name": self.model_name}
 
@@ -181,11 +184,20 @@ class RAG:
             return_source_documents=False,
         )
 
-    def __call__(self, query: str) -> str:
+    def __call__(self, query: str) -> dict:
         """
-        Ask question
+        Ask question, return answer in dictionary form
         :param query: question
         :return: answer
         """
         response = self.rag_chain.invoke(query)
         return response
+
+    def query(self, query: str) -> str:
+        """
+        Ask question, return answer in string form
+        :param query: question
+        :return: answer
+        """
+        response = self.rag_chain.invoke(query)
+        return response["result"]
