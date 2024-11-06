@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "ragsystem"
+version = "0.1.0"
+description = "Simple realization of RAG"
+authors = ["Timik232 <komolov.timurka@mail.ru>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.10.15"
+transformers = "^4.46.2"
+requests = "^2.32.3"
+langchain = "^0.3.7"
+qdrant-client = "^1.12.1"
+pydantic = "^2.9.2"
+torch = {version = "^2.5.0+cu121", source = "pytorch"}
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.0.1"
+black = "^24.10.0"
+
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "primary"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
