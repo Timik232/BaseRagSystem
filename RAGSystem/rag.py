@@ -1,20 +1,22 @@
 import json
-from langchain_community.vectorstores import Qdrant
-from langchain.chains import RetrievalQA
+
 import requests
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from transformers import AutoModel, AutoTokenizer
 import torch
+from langchain.chains import RetrievalQA
+from langchain.llms.base import LLM
+from langchain_community.vectorstores import Qdrant
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pydantic import Field
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct
-from langchain.llms.base import LLM
-from pydantic import Field
+from transformers import AutoModel, AutoTokenizer
 
 
 class CustomAPILLM(LLM):
     """
     Custom LLM class that use LLM API.
     """
+
     api_url: str = Field(..., description="URL for HTTP requests")
     model_name: str = Field(..., description="Name of the LLM model")
 
@@ -63,7 +65,9 @@ class CustomAPILLM(LLM):
             response_data = response.json()
             return self.get_text_from_response(response_data)
         else:
-            raise ValueError(f"API request failed with status code {response.status_code}")
+            raise ValueError(
+                f"API request failed with status code {response.status_code}"
+            )
 
     def _identifying_params(self):
         return {"api_url": self.api_url, "model_name": self.model_name}
@@ -77,6 +81,7 @@ class RAG:
     """
     Class that implements the RAG system.
     """
+
     def __init__(
         self,
         tokenizer: AutoTokenizer,
@@ -118,7 +123,12 @@ class RAG:
         embeddings = outputs.last_hidden_state.mean(dim=1)
         return embeddings.squeeze().numpy()
 
-    def qdrant_create(self, text: str, qdrant_client: QdrantClient, collection_name: str = "text-collection"):
+    def qdrant_create(
+        self,
+        text: str,
+        qdrant_client: QdrantClient,
+        collection_name: str = "text-collection",
+    ):
         """
         Connect to Qdrant
         :param text: text
@@ -158,4 +168,4 @@ class RAG:
         :return: answer
         """
         response = self.rag_chain.run(query)
-        return  response
+        return response
