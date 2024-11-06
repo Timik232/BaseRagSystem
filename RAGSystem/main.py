@@ -32,3 +32,4 @@ def simple_rag_init(
 if __name__ == "__main__":
     rag = simple_rag_init("../war_and_peace_small.txt")
     print(rag("Кто главный персонаж книги война и мир?"))
+    print(rag.query("что делал Долохов?"))
