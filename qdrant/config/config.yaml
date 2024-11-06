@@ -1,0 +1,12 @@
+# config.yaml
+storage:
+  storage_type: "memory"
+  storage_path: "/qdrant/storage"
+
+http:
+  host: "0.0.0.0"
+  port: 6333
+
+grpc:
+  host: "0.0.0.0"
+  port: 6334
