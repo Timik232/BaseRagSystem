@@ -14,6 +14,7 @@ langchain = "^0.3.7"
 qdrant-client = "^1.12.1"
 pydantic = "^2.9.2"
 torch = {version = "^2.5.0+cu121", source = "pytorch"}
+sentence-transformers="^3.2.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"
